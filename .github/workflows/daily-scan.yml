@@ -16,13 +16,30 @@ jobs:
           python-version: '3.10'
       - name: Install pydicom
         run: pip install pydicom
-      - name: Create sample DICOM file for testing
+      - name: Create a valid DICOM file for testing
         run: |
           mkdir -p test_dicoms
-          python -c "import pydicom; ds = pydicom.dataset.Dataset(); ds.PatientName = 'FAKE_PATIENT'; ds.PatientID = '12345'; ds.save_as('test_dicoms/sample.dcm')"
+          python -c "
+import pydicom
+from pydicom.dataset import Dataset, FileMetaDataset
+from pydicom.uid import ExplicitVRLittleEndian
+# Create dataset
+ds = Dataset()
+ds.PatientName = 'FAKE^PATIENT'
+ds.PatientID = '12345'
+ds.StudyDate = '20250101'
+# Set file meta
+ds.file_meta = FileMetaDataset()
+ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+ds.is_little_endian = True
+ds.is_implicit_VR = False
+# Save
+ds.save_as('test_dicoms/sample.dcm', write_like_original=False)
+print('DICOM file created successfully')
+"
       - name: Run scanner on sample folder
         run: python scan_dicom.py test_dicoms --output report.csv
-      - name: Upload CSV report as artifact
+      - name: Upload CSV report
         uses: actions/upload-artifact@v4
         with:
           name: phi-scan-report
